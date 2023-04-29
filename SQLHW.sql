@@ -44,20 +44,6 @@
 --)
 
 -- 找出第 5 貴跟第 8 便宜的產品的產品類別
---4, 59, RC
---select CategoryID, ProductID, ProductName
---from Products 
---order by UnitPrice desc
---offset 4 rows
---fetch next 1 rows only
-
---1, 1, chai
---select CategoryID, ProductID, ProductName
---from Products 
---order by UnitPrice asc
---offset 7 rows
---fetch next 1 rows only
-
 
 --資料CID = 1,4
 
@@ -91,7 +77,7 @@
 --from t1
 --where PriceDesc = 5 or PriceAsc = 8
 
---買過第 5 貴'或'第 8 便宜的產品的顧客
+
 --資料 74
 --select distinct c.ContactName, od.ProductID
 --from Products p
@@ -101,41 +87,8 @@
 --where od.ProductID in (1, 59)
 
 
---select o.CustomerID, od.ProductID
---from [Order Details] od
---inner join Products p on p.ProductID = od.ProductID
---inner join Orders o on o.OrderID = od.OrderID
---where od.ProductID in(
---(
---select ProductID
---from Products 
---order by UnitPrice desc
---offset 4 rows
---fetch next 1 rows only)
---,
---(
---select ProductID
---from Products
---order by UnitPrice asc
---offset 7 rows
---fetch next 1 rows only))
-
---with t1 as
---(select ProductID, CategoryID,
---	   ROW_NUMBER()over(order by UnitPrice desc)as NoDESC,
---	   ROW_NUMBER()over(order by UnitPrice)as NoASC 
---from Products)
---t2 as
---(select 1 as ROWNUM, CategoryID
---from t1
---where NoDESC = 5 or NoASC = 8)
---select *
---from t2
---where CategoryID = 1
-
 -- 找出誰賣過第 5 貴跟第 8 便宜的產品
 
---賣過第 5 貴'或'第 8 便宜的產品的員工
 --資料 18
 --select distinct e.LastName + e.FirstName Name, od.ProductID
 --from Products p
@@ -384,11 +337,55 @@
 
 -- 列出跟銷售最好的供應商買最多金額的客戶與購買金額 (含購買其它供應商的產品)
 
+-- QUICK, 110277....
+--with t1 as(
+--select top 1 o.CustomerID, sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) SalesTotal
+--from Orders o
+--right outer join [Order Details] od on od.OrderID = o.OrderID
+--right outer join Products p on p.ProductID = od.ProductID
+--where p.SupplierID in(
+--select top 1 p.SupplierID
+--from Products p
+--right outer join [Order Details] od on od.ProductID = p.ProductID
+--group by p.SupplierID
+--order by sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) desc)
+--group by o.CustomerID
+--order by SalesTotal desc)
+--select t1.CustomerID, sum(od.UnitPrice * od.Quantity * (1 - od.Discount))
+--from t1
+--right outer join Orders o on o.CustomerID = t1.CustomerID
+--right outer join [Order Details] od on od.OrderID = o.OrderID
+--group by t1.CustomerID
+--having t1.CustomerID is not null
 
 
 -- 列出跟銷售最好的供應商買最多金額的客戶與購買金額 (不含購買其它供應商的產品)
 
+-- QUICK, 24992.33....
+
+--select top 1 o.CustomerID, sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) SalesTotal
+--from Orders o
+--right outer join [Order Details] od on od.OrderID = o.OrderID
+--right outer join Products p on p.ProductID = od.ProductID
+--where p.SupplierID in(
+--select top 1 p.SupplierID
+--from Products p
+--right outer join [Order Details] od on od.ProductID = p.ProductID
+--group by p.SupplierID
+--order by sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) desc)
+--group by o.CustomerID
+--order by SalesTotal desc
+
+
 -- 列出那些產品沒有人買過
+
+--select p.ProductName
+--from [Order Details] od
+--inner join Products p on p.ProductID = od.ProductID
+--where p.ProductID not in(
+--select od.ProductID
+--from [Order Details] od
+--inner join Products p on p.ProductID = od.ProductID)
 
 -- 列出沒有傳真 (Fax) 的客戶和它的消費總金額
 
@@ -410,7 +407,14 @@
 
 -- 列出每一個城市消費的產品種類數量
 
-
+--select c.City, ca.CategoryName, count(od.Quantity)
+--from Customers c
+--right outer join Orders o on o.CustomerID = c.CustomerID
+--right outer join [Order Details] od on od.OrderID = o.OrderID
+--right outer join Products p on p.ProductID = od.ProductID
+--right outer join Categories ca on ca.CategoryID = p.CategoryID
+--group by c.City, ca.CategoryName
+--order by c.City, ca.CategoryName
 
 -- 列出目前沒有庫存的產品在過去總共被訂購的數量
 
@@ -443,12 +447,15 @@
 
 -- 列出每位員工的下屬的業績總金額
 
-select o.EmployeeID Staff, sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) Total
-from Orders o
-right outer join [Order Details] od on od.OrderID = o.OrderID
-group by o.EmployeeID
+--select e.ReportsTo Boss, o.EmployeeID Staff, sum(od.UnitPrice * od.Quantity * (1 - od.Discount)) Total
+--from Orders o
+--right outer join [Order Details] od on od.OrderID = o.OrderID
+--right outer join Employees e on e.EmployeeID = o.EmployeeID
+--group by e.ReportsTo, o.EmployeeID
+--having e.ReportsTo is not null
+--order by e.ReportsTo, o.EmployeeID
 
--- 列出每家貨運公司運送最多的那一種產品類別與總數量
+-- 列出每家貨運公司運送最多的那一種產品類別與總數量(未完)
 
 --select o.ShipVia, p.CategoryID, count(p.CategoryID)
 --from [Order Details] od
@@ -460,9 +467,9 @@ group by o.EmployeeID
 
 --order by o.ShipVia, p.CategoryID
 
--- 列出每一個客戶買最多的產品類別與金額
+-- 列出每一個客戶買最多的產品類別與金額(未完)
 
--- 列出每一個客戶買最多的那一個產品與購買數量
+-- 列出每一個客戶買最多的那一個產品與購買數量(未完)
 
 --select o.CustomerID, od.ProductID, count(Quantity)
 --from [Order Details] od
