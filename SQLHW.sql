@@ -1,4 +1,4 @@
--- 找出和最貴的產品同類別的所有產品
+﻿-- 找出和最貴的產品同類別的所有產品
 --資料 12
 --select CategoryID, ProductName
 --from Products 
